@@ -1,112 +1,174 @@
 rm(list = ls())
 #Sets specific path to work directory, so set it based on your actual working directory
+#important to do this part to get 
 path <- ("C:\\Users\\marvi\\OneDrive\\Documents\\Github\\Stock_Markets")
 setwd(path)
 
-#loads libraries that 
+#loads libraries that is needed
 library(tidyverse)
-library(readxl)
+library(readxl) 
 library(writexl)
 library(xts)
 library(lubridate)
 
+#wrangle <- read_excel("marketable_securities.xlsx")
+month_ly <- function(wrangle){
+  l <- wrangle
+  l <- filter(l, (l$`Security Type Description` == "Marketable" & 
+                 (l$`Security Class Description` == "Bill" | l$`Security Class Description`== "Note")))
+  l$`Security Class Description` <- as.factor(l$`Security Class Description`)
+  
+  l <- l %>% mutate(
+      bills = case_when(
+        l$`Security Class Description` == "Bill" ~ l$`Securities Sold Count`),
+      notes = case_when(
+        l$`Security Class Description` == "Note" ~ l$`Securities Sold Count`)
+      )
+  l <- l %>% group_by(dates = l$`Record Date`)  
+  bills <- na.omit(l[, c(11, 9)])
+  notes <- na.omit(l[, c(11, 10)])
+  
+  l <- left_join(bills, notes, by = ("dates" = "dates"))
+  l <- l %>% arrange(l)
+  
+  return(l)
+}
+
 #puts file names into list object to iterate through it better
-files <- list("macro_tz.xlsx", "debt_ceiling_tz.xlsx", "debt_tz.xlsx")
-#creates data objects and attaches them to better join them
-x <- read_excel("indices_tz.xlsx")
-attach(x)
+files <- list("macro_tz.xlsx", "marketable_securities.xlsx", "debt_ceiling_tz.xlsx", "debt_tz.xlsx")
+files_ <-list("meeting_dates.xlsx", "release_dates_10.xlsx") 
+#adding data object
+merged <- read_excel("indices_tsz.xlsx")
+attach(merged)
+
 
 #function merges data into one sheet
-merge <- function(){
+merge_ <- function(){
   #This helps when iterating through the files
   confirm_ = 1
-  #joins x and y dataframes
-  merged <- weekly_(x, confirm_)
-  rownames(merged) <- NULL
-  merged <- merged[,-c(2)]
-  colnames(merged)[1] = "dates"
-  
+  right <- morph_(merged, confirm_)
+  merged <- left_join(merged, right, by = "dates")
   confirm_ = 2
   
   # iterates through files in working directory and joins them together
   for(items in files){
     k <- read_excel(items)
     attach(k)
-  
-    k <- weekly_(k, confirm_)
     
-    merged <- left_join(merged, k, by = "dates")
-    confirm_ = confirm_ + 1 
+    if(confirm_ != 2){
+     k <- morph_(k, confirm_)
+     merged <- left_join(merged, k, by = "dates")
+    }
+    else{
+      k <- k %>% 
+        mutate(
+          cpi_inflation = ((CPI - lag(CPI))/ lag(CPI)) * 100,
+          core_inflation = ((CORE_CPI - lag(CORE_CPI))/ lag(CORE_CPI)) * 100 
+        )
+      
+      merged <- merge(merged, k, by.x = "dates", by.y = "dates", all.x = T, all.y = T)
       }
+    confirm_ = confirm_ + 1 
+  }
   
+  futures <- read_excel("DFF.xlsx", sheet = "Futures")
+  funds_rate <- read_excel("DFF.xlsx", sheet = "DFF")
   
-  #makes the dates column of type date and formats the dates a specific way 
-  merged <- merged %>% mutate(dates = as.Date(dates, format = "%Y-%m-%d")) 
-  
+  merged <- left_join(merged, funds_rate, by = "dates") 
+  merged <- left_join(merged, futures, by = "dates")
   #returns joined tables
+  merged <- merged %>% 
+    mutate(
+      future_funds_rate = 100 - Price
+    )
+  
+  for(items in files_){
+    k <- read_excel(items)
+    attach(k)
+    
+    k <- k %>% mutate(dates = as.Date(dates)) 
+    
+    #merged <- left_join(merged, k, by = "dates")
+    merged <- merge(merged, k, by.x = "dates", by.y = "dates", all.x = T, all.y = T)
+  }
+  
   return(merged)  
 }
 
 #collapses daily/monthly data into weekly increments and finds the average value for the week
-weekly_ <- function(z, confirm_){
+morph_ <- function(z, confirm_){
   z = z
   if(confirm_ == 1){
     #find the weekly average for different values
     z <- z %>% mutate(dates = as.Date(z$dates))
-    z <- z %>% as.xts(order.by = .$dates)
-    z <- apply.weekly(z, mean)
-    z <- fortify.zoo(z)
-    print(z)
-    }
-  else if(confirm_ == 2){
-    #finds the week of each first of the month put places it on Friday
-    z <- z %>% mutate(dates = as.Date(z$dates))
-    new_dates <- (ceiling_date(z$dates, unit = "week") + 5)
-    z$dates <- new_dates
-    print(z)
-    }
-  else if(confirm_ == 3 || 4){
-    if(confirm_ == 3){  
+    z$russell_vol <- as.numeric(z$russell_vol)
+    z$sp_500 <- as.numeric(z$sp_500)
+    #groups the stock prices 
+    z <- z %>% group_by(dates = ceiling_date(z$dates, unit = "week") - 2) %>% 
+      summarise(avg_rl2000 = mean(russell_2000, na.rm = TRUE),
+                avg_sp500 = mean(sp_500, na.rm = TRUE)) 
+  }
+  else if(confirm_ == 3){
+    z <- month_ly(z)
+    
+  }
+  else if(confirm_ == 4 || 5){
+    if(confirm_ == 4){  
       #finds the week the date of the debt ceiling change
       #and sets a variable called 
       z <- z %>% mutate(dates = as.Date(z$dates))
-      new_dates <- (ceiling_date(z$dates, unit = "week") - 2)
-      z <- z %>% add_column(ceiling_dates = z$dates) %>%
-        mutate(dates = new_dates)
-      print(x)
+      z <- z %>% add_column(ceiling_dates = z$dates) 
+      print(z)
           }
     else{
       #finds the week the debt is raised and then make the week the identifier 
       #locates the dates when the date was raised
       z <- z %>% mutate(dates = as.Date(z$dates))
-      new_dates <- (ceiling_date(z$dates, unit = "week") - 2)
-      z <- z %>% mutate(action_dates = dates) %>%
-        mutate(dates = new_dates)
-      print(z)
-      z <- z[z$dates == z$action_dates, ]
-        } 
-      
-    }  
-  
-  
+     }
+    }
   return(z)
-}
-
-
+  }  
+ 
 #returns merged data and stores it in a data object
-data <- merge()
-data <- data[, -c(4, 6, 9:12, 14:15)]
-#gives a summary of the dataset
-summary(data)
-str(data)
+data <- merge_()
+
+print("WRANGLINGGGGG.......")
+#wrangle adjust prices for inflation to 2015 dollars
+wrangle <- function(data){
+  cpi_2015 <- 237.00175
+  
+  data <- data %>% mutate(sp_500 = as.numeric(as.character(sp_500)), 
+                          russell_vol = as.numeric(as.character(russell_vol)))
+  data$meeting = ifelse(is.na(data$meeting), 0, data$meeting)
+  data$release_info = ifelse(is.na(data$release_info), 0, data$release_info)
+  data$Public_Debt = data$Public_Debt / (10^7)
+  data$Public_Held = data$Public_Held / (10^7)
+  data$Govt_Held
+  
+  data <- data %>% 
+    mutate(
+      russell_2000 = 100 * (russell_2000 / cpi_2015),
+      avg_rl2000 = 100 * (avg_rl2000 / cpi_2015),
+      avg_sp500 = 100 * (avg_sp500 / cpi_2015),
+      sp_500 =  100 * (sp_500 / cpi_2015),
+      Govt_Held = 100 * (Govt_Held / cpi_2015),
+      Public_Held = 100 * (Govt_Held / cpi_2015),
+      Public_Debt = 100 * (Public_Debt / cpi_2015),
+    )
+  
+   
+  return(data)
+}
+data <- wrangle(data)
+data <- subset(data, dates > "2000-1-1" & dates < "2020-01-01", select = c(1:7, 15:25, 27:30))
+
+#gives a summary of the data set
+summary_ <- as.data.frame(summary(data[, c(2:9, 15:22)]))
+str(data[, c(2:9, 15:22)])
 
 #gives a correlation matrix
-corr <- data[, c(2:6, 8)] 
-cor(corr, use = "complete.obs")
+cor(data[, c(2:9, 15:19)], use = "complete.obs")
 
 #to save excel workbook
-#write_xlsx(data, "dataset.xlsx", col_names = TRUE)
-
-
-
+#write_xlsx(data, "dataset_tsz.xlsx", col_names = TRUE)
 
