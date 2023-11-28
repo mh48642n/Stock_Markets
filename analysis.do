@@ -5,6 +5,7 @@ clear
 cd "C:\Users\marvi\OneDrive\Documents\GitHub\Stock_Markets"
 
 //imports data into stata
+import excel standard_dataset_tsz.xlsx, firstrow clear
 import excel stationary_dataset.xlsx, firstrow clear
 import excel monthly_dataset.xlsx, firstrow clear
 
@@ -30,13 +31,15 @@ order time
 	dfuller s_sp500_p, trend
 	
 	//Index Prices: Russell 2000 and S&P 500 
+	//No autocorrelation in the residuals at the 99% range and the var is stable
 	var s_sp500_p s_funds_rate s_Baa s_T_rate
+	
+	//No autocorrelation in the residuals at the 95% range and the var is stable 
 	var s_russellp s_funds_rate s_Baa s_T_rate
-     
+	
 	//Debt and rates
-	var s_T_rate s_Baa s_govtheld
 	var s_T_rate s_Baa s_publicheld
- 
+
 /*Structural Vector Auto-Regression*/
 /*Short Term*/
 	
@@ -49,7 +52,7 @@ order time
 		svar s_publicheld s_T_rate s_Baa, aeq(A) beq(B) 
 		
 		/*Counterfactual*/
-		svar s_funds_rate s_T_rate s_Baa, aeq(A) beq(B) 
+		svar s_funds_rate s_T_rate s_Baa, aeq(A) beq(B)
 
 	//Index Prices and Public Debt
 	//Models the contemporaneous effects between these independent variables
@@ -57,8 +60,12 @@ order time
 	matrix B = (.,0,0,0\0,.,0,0\0,0,.,0\0,0,0,.)
 	
 		/*AB models*/
-		svar s_publicheld s_T_rate s_Baa s_sp500_p, aeq(A) beq(B)  
-		svar s_publicheld s_T_rate s_Baa s_russellp, aeq(A) beq(B)
+		svar s_publicheld s_T_rate s_Baa s_sp500_p, aeq(A) beq(B)  		 
+		svar s_publicheld s_T_rate s_Baa s_russellp, aeq(A) beq(B)       
+	
+		/*Counterfactual*/
+		svar s_funds_rate s_T_rate s_Baa s_sp500_p, aeq(A) beq(B)
+		svar s_funds_rate s_T_rate s_Baa s_russellp, aeq(A) beq(B)
 	
 //post diagnostic checks for equations
 /*Casuality tests*/
@@ -68,8 +75,12 @@ vargranger
 varlmar
 
 /*Running FEVD and IRF graphs*/ 
-//IRF on Baa yields
+//IRF on index prices
+irf create IRF, set(results3) step(8)
+irf create modela, set(results3) step(8)
+irf graph irf, irf(IRF) response(s_russeellp)	 
+irf graph sirf, irf(modela) response(s_sp500_p)
+//FEVD 
 
-//IRF on T_rate	
-	
+
 	
