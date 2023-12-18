@@ -5,15 +5,15 @@ clear
 cd "C:\Users\marvi\OneDrive\Documents\GitHub\Stock_Markets"
 
 //imports data into stata
-import excel standard_tzs.xlsx, firstrow clear
-import excel monthly_dataset.xlsx, firstrow clear
+//import excel standard_tzs.xlsx, firstrow clear
+//import excel monthly_dataset.xlsx, firstrow clear
 import excel weekly_dataset.xlsx, firstrow clear
 
 //declaring data to be time series
 //for monthly_dataset
-generate time = tm(2001m1) + _n - 1
-format time %tm
-tsset time
+//generate time = tm(2001m1) + _n - 1
+//format time %tm
+//tsset time
 
 //for weekly_dataset
 generate time = tw(2001w1) + _n - 1
@@ -21,12 +21,12 @@ format time %tw
 tsset time
 
 //for daily_dataset
-generate time = td(01jan2000) + _n - 1
-format time %td
-tsset time
+//generate time = td(01jan2000) + _n - 1
+//format time %td
+//tsset time
 
 //dropping observations 
-drop if missing(sp_500)
+//drop if missing(sp_500)
 drop dates
 order time
 
@@ -44,95 +44,82 @@ label variable Govt_Held "Government Held Debt"
 label variable ten_year_futures "10-yr Futures"
 label variable futures_vol "10-yr Futures Trading Volume"
 
+/*Viewing Data*/
+describe
+summarize
+cor
 
-/*BIVARIATE VECTOR AUTO-REGRESSION*/
+
+/*MULTIVARIATE VECTOR AUTO-REGRESSION*/
 	//test if data is stationary
-	dfuller s_russellp, trend
-	dfuller s_sp500_p, trend
+	dfuller d.(avg_standards), trend
+	dfuller d.(avg_russell), trend
 	
-	//Index Prices: Russell 2000 and S&P 500 
+	//Lag length checker
+	varsoc D.(avg_10yr avg_Baa avg_russell)
+	varsoc D.(avg_funds avg_10yr avg_russell)
+	
+	
+	//Index Price: Russell 2000 
 	//No autocorrelation in the residuals at the 95% range and the var is stable 
 	var D.(avg_10yr avg_Baa avg_russell)
-	estimates store var1
-	var D.(avg_funds avg_10yr avg_russell)
-	estimates store var2
+    varlmar
+	varstable	
+	vargranger
 	
-	var avg_10yr avg_Baa avg_russell
-	estimates store var3
-	var avg_funds avg_10yr avg_russell
-    estimates store var4
+	var D.(avg_funds avg_10yr avg_russell)
+	varlmar
+	varstable	
+	vargranger
+	
+//	var avg_10yr avg_Baa avg_russell	
+//	var avg_funds avg_10yr avg_russell
+ 
 	/*Structural Vector Auto-Regression*/
     /*Short Term*/
 	
 	//Public Debt on Rates
 	//Models the contemporaneous effects across three independent variables
-	matrix A = (1, 0, 0\., 1, 0\., ., 1)
-	matrix B = (., 0, 0\0,. , 0\0, 0, .)
+//	matrix A = (1, 0, 0\., 1, 0\., ., 1)
+//	matrix B = (., 0, 0\0,. , 0\0, 0, .)
 	
 
 		/*AB models*/
-		svar D.(Public_Debt ten_year_futures avg_Baa), aeq(A) beq(B) 
-		svar D.(avg_Baa avg_10yr avg_russell), aeq(A) beq(B) 
-		svar D.(avg_10yr avg_Baa avg_russell), aeq(A) beq(B)
+//		svar D.(Public_Debt ten_year_futures avg_Baa), aeq(A) beq(B) 
+//		svar D.(avg_Baa avg_10yr avg_russell), aeq(A) beq(B) 
+//		svar D.(avg_10yr avg_Baa avg_russell), aeq(A) beq(B)
         
 		/*Counterfactual*/
-		svar D.(avg_funds avg_10yr avg_Baa), aeq(A) beq(B)
+//		svar D.(avg_funds avg_10yr avg_Baa), aeq(A) beq(B)
 
 	//Public Debt on Financial Markets with 4 x 4 matrix
 	matrix A = (1, 0, 0, 0\., 1, 0, 0\., ., 1, 0\., ., ., 1)
 	matrix B = (., 0, 0, 0\0, ., 0, 0\0, 0, ., 0\0, 0, 0, .)
 	
+	
+	
+
+	
 		/*AB Models*/
-		svar Public_Debt avg_10yr avg_Baa avg_russell, aeq(A) beq(B)
+//		svar Public_Debt avg_10yr avg_Baa avg_russell, aeq(A) beq(B)
 		svar D.(Public_Debt avg_10yr avg_Baa avg_russell), aeq(A) beq(B)
-		estimates save svar_pdandyields
+		irf set "impr.irf"
+	    irf create test0, step(8)
+		irf graph oirf, impulse(D.Public_Debt D.avg_10yr D.avg_Baa D.avg_russell) response(D.avg_russell)	
+
 		
 		/*Another angle*/
-		svar Public_Debt avg_funds ten_year_futures avg_russell,aeq(A) beq(B)
-		svar D.(Public_Debt avg_funds ten_year_futures avg_russell), aeq(A) beq(B)
-		estimates save svar_pffr
-//post diagnostic checks for equations
-/*Casuality tests*/
-vargranger
-
-/*Autocorrelation in the lag orders residuals*/
-varlmar
-
-/*Running FEVD and IRF graphs*/ 
-//IRF on index prices
-irf create d_results_3, set(calm, replace) step(12)
-irf create modela, set(results1) step(8)
-irf graph irf, irf(d_results_3) response(avg_russell)	
-irf graph sirf, irf(modela) response(s_sp500_p)
-//FEVD 
-
-
-//Printing tables
+//		svar Public_Debt ten_year_futures avg_funds avg_russell,aeq(A) beq(B)
+		svar D.(Public_Debt ten_year_futures avg_funds avg_russell), aeq(A) beq(B)
+		irf set "impr1.irf"
+		irf create test1, step(8)
+		irf graph oirf, impulse(D.Public_Debt D.ten_year_futures D.avg_funds D.avg_russell) response(D.avg_russell)
 
 
 
-//Use matrix to make 
-
-//Casuality table matrices
-
-	//level
-	matrix lvl_tbi = r(gstats)
-
-	//difference
 
 
-frmttable using result_0, statmat(lvl_tbi) sdec(3, 0, 3) hlines(110001000100010001) vlines(101011) title("Granger Causality(Level): Treasury Yields, Baa Yields and Index Value") ctitles("Dependent", "Explanatory", "Chi^2", "DF", "Probability of Chi^2") rtitles("Treasury Yields", "Baa Yields" \ "", "Russell Index" \"", "ALL" \ "Baa Yields", "Treasury Yields" \"", "Russell Index", \"", "ALL" \"Russell Index","Treasury Yields" \"", "Baa Yields" \ "","ALL") basefont(roman fs10) 
 
-frmttable using level_fti, statmat(results1) sdec(3, 0, 3) hlines(110001000100010001) vlines(101011) title("Granger Causality(Level): Federal Funds Rate, Treasury Yields, and Index Value") ctitles("Dependent", "Explanatory", "Chi^2", "DF", "Probability of Chi^2") rtitles("Federal Funds", "Ten Yr Yields" \ "", "Russell Index" \"", "ALL" \"Treasury Yields", "Federal Funds"\"", "Russell Index", \"", "ALL" \"Russell Index","Federal Funds" \"", "10 Yr Yields" \ "","ALL") basefont(roman fs10)
 
-frmttable using diff_tbi, statmat(d_results) sdec(3, 0, 3) hlines(110001000100010001) vlines(101011) title("Granger Causality(Differenced): Treasury Yields, Baa Yields and Index Value") ctitles("Dependent", "Explanatory", "Chi^2", "DF", "Probability of Chi^2") rtitles("Treasury Yields", "Baa Yields" \ "", "Russell Index" \"", "ALL" \ "Baa Yields", "Treasury Yields" \"", "Russell Index", \"", "ALL" \"Russell Index","Treasury Yields" \"", "Baa Yields" \ "","ALL") basefont(roman fs10)
-
-frmttable using diff_fti, statmat(d_results1) sdec(3, 0, 3) hlines(110001000100010001) vlines(101011) title("Granger Causality(Differenced): Federal Funds Rate, Treasury Yields, and Index Value") ctitles("Dependent", "Explanatory", "Chi^2", "DF", "Probability of Chi^2") rtitles("Federal Funds", "Ten Yr Yields" \ "", "Russell Index" \"", "ALL" \"Treasury Yields", "Federal Funds"\"", "Russell Index", \"", "ALL" \"Russell Index","Federal Funds" \"", "10 Yr Yields" \ "","ALL") basefont(roman fs10) 
-
-frmttable using level_tbi, statmat(results_2) sdec(3, 0, 3) hlines(110001000100010001) vlines(101011) title("Granger Causality(Leveled): Public Debt, Treasury Yields, Baa Yields and Russell Index") ctitles("Dependent", "Explanatory", "Chi^2", "DF", "Probability of Chi^2") rtitles("Public Debt", "Treasury Yields"\"","Baa Yields"\"","Russell Index"\"","All" \ "Treasury Yields","Public Debt"\"","Baa Yields"\"","Russell Index"\"","All"\"Baa Yields","Public Debt"\"","Treasury Yields"\"","Russell Index"\"","All"\"Russell Index","Public Debt"\"", "Treasury Yields"\"", "Baa Yields"\"", "Russell Index"\"",  "All") basefont(roman fs10)
-
-frmttable, statmat(d_results2) sdec(3, 0, 3) hlines(110001000100010001) vlines(101011) title("Granger Causality(Differenced): Public Debt, Treasury Yields, Baa Yields and Russell Index") ctitles("Dependent", "Explanatory", "Chi^2", "DF", "Probability of Chi^2") rtitles("Public Debt", "Treasury Yields"\"","Baa Yields"\"","Russell Index"\"","All" \ "Treasury Yields","Public Debt"\"","Baa Yields"\"","Russell Index"\"","All"\"Baa Yields","Public Debt"\"","Treasury Yields"\"","Russell Index"\"","All"\"Russell Index","Public Debt"\"", "Treasury Yields"\"", "Baa Yields"\"", "Russell Index"\"",  "All") basefont(roman fs10) 
-
-frmttable using dif_ptbr, statmat(d_results2) sdec(3, 0, 3) hlines(110001000100010001) vlines(101011) title("Granger Causality(Differenced): Public Debt, Treasury Yields, Baa Yields and Russell Index") ctitles("Dependent", "Explanatory", "Chi^2", "DF", "Probabality of Chi^2") rtitles("Public Debt", "Treasury Yields"\"","Baa Yields"\"","Russell Index"\"","All" \ "Treasury Yields","Public Debt"\"","Baa Yields"\"","Russell Index"\"","All"\"Baa Yields","Public Debt"\"","Treasury Yields"\"","Russell Index"\"","All"\"Russell Index","Public Debt"\"", "Treasury Yields"\"", "Baa Yields"\"",  "All") basefont(roman fs10)
 
 

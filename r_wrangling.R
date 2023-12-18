@@ -242,6 +242,10 @@ data <- merge(daily, future, all = TRUE)
 write_xlsx(data, "standard_tzs.xlsx")
 summary <- as.data.frame(weekly[,c(2:4, 6, 12)])
 
+#differencing the weekly data
+
+
+#Good Work :)
 stargazer::stargazer(summary, title = "Summary Statistics",
       covariate.labels = c("Baa Yields", "Treasury Yields", "Federal Funds Rate", "Russell Index", "Public Debt"),
       summary.stat = c("n", "min", "median", "max", "sd", "mean", "p25", "p75"), font.size = "small",out = "Summary.html",
