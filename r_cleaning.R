@@ -6,15 +6,17 @@ library(readxl)
 library(tidyverse)
 library(writexl)
 
+
 #creates a vector with the other files that I want to join together
 files <- c("debt_tz.xlsx", "DGS10.xlsx", "DEXUSEU.xlsx",
-           "rates_and_monetary_base.xlsx","DAAA.xlsx","DFF.xlsx", 
-           "monthly_gdp.xlsx", "M2NS.xlsx", "cpi_release_dates.xlsx", 
+           "rates_and_monetary_base.xlsx","DAAA.xlsx","DBAA.xlsx","DFF.xlsx", 
+           "futures_data.xlsx", "monthly_gdp.xlsx", "M2NS.xlsx", 
+           "budget_surplus_deficit.xlsx","cpi_release_dates.xlsx", 
            "meeting_dates.xlsx", "debt_ceiling_tz.xlsx")
 
 #function that attaches and cleans/transforms the data
 join_ <- function(){
-  #reads and attaches the first file 
+  #reads and attaches the first file; change the file to russell 
   head_ <- inter_att("indices_tsz.xlsx")
   
   #attaches each file and joins them together
@@ -24,28 +26,13 @@ join_ <- function(){
   }  
   
   #subsets data by date range
-  head_ <- subset(head_, dates > "2000-01-01" & dates < "2023-05-31")
+  head_ <- subset(head_, dates > "1999-05-31")
   
   return(head_)   
 }
 
 #function attaches and makes formats date in specific way
-inter_att <- function(value){
-  num <- length(excel_sheets(value))
-  print(excel_sheets(value))
-  sheet <- readline("What sheet you want to add: ")
-  a <- read_excel(value, sheet = sheet)
-  
-  while(num > 1){
-    ans <- readline("Do you want to add another sheet(Yes or No): ")
-    if(ans == "Yes"){
-      sheet <- readline("What sheet you want to add: ")
-      b <- read_excel(value, sheet = sheet)
-      a <- merge(a, b, all = TRUE)
-    }
-    num <- num - 1
-    
-  }
+inter_att <- function(a){
   
   attach(a)
   
@@ -53,6 +40,7 @@ inter_att <- function(value){
   a <- a %>% mutate(dates = as.Date(dates))
   return(a)
 }
+
 
 data_set <- join_()
 

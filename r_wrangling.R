@@ -8,6 +8,7 @@ library(readxl)
 library(writexl)
 library(tidyverse)
 library(readr)
+library(haven)
 
 files_ <- c("rates_and_currencies.xlsx", "macro_tz.xlsx")
 cpi <- 242.2575
@@ -246,8 +247,30 @@ summary <- as.data.frame(weekly[,c(2:4, 6, 12)])
 
 
 #Good Work :)
-stargazer::stargazer(summary, title = "Summary Statistics",
-      covariate.labels = c("Baa Yields", "Treasury Yields", "Federal Funds Rate", "Russell Index", "Public Debt"),
-      summary.stat = c("n", "min", "median", "max", "sd", "mean", "p25", "p75"), font.size = "small",out = "Summary.html",
-      notes = c("Public Debt and Russell are adjusted for inflation using 2015 Core CPI and the rates are adjusted using the exact formula to by subtracting 1 from the quotient of the nominal and expected inflation "))
+weekly <- weekly[, c(2:4, 6, 12:13)]
+weekly <- as.data.frame(weekly)
+
+stargazer::stargazer(weekly, title = "Table 1",
+      covariate.labels = c("Baa Yields", "Treasury Yields", "Federal Funds Rate", "Russell Index", "Public Debt", "Futures Prices"),
+      summary.stat = c("n", "min", "median", "max", "sd", "mean", "p25", "p75"), font.size = "small",out = "Summary_.html",
+      notes = c("Public Debt and Russell are adjusted for inflation using 2015 Core CPI and the rates are adjusted using the exact formula to by subtracting 1 from the quotient of the nominal and expected inflation ",
+                "Public Debt data came from the Treasury Data Source. Baa yields, Treasury Yields, Funds Rate comes from FRED. Future Prices and the Russell Index came from Bloomberg"))
+
+#Helping a brother out
+data <- read_dta("Stafford_data.dta") 
+attach(data)
+
+d_2019 <- subset(data, year == 2019, select = c("rents", "valuehs", "trantimes", "hhincome", "metro_id", "density","rooms"))
+d_2021 <- subset(data, year == 2021, select = c("rents", "valuehs", "trantimes", "hhincome", "metro_id", "density", "rooms"))
+
+d_2019 <- as.data.frame(d_2019)
+d_2021 <- as.data.frame(d_2021)
+
+
+stargazer::stargazer(d_2019, title = "Figure 1: Summary Statistics for 2019",
+      covariate.labels = c("Rental Prices", "House Values", "Commute Times","Household Income", "Metro Area", "Density", "Rooms"),
+      summary.stat = c("min", "median", "max", "mean", "sd", "p25", "p75", "n"), font.size = "small", out = "stafford_2019.html")
+stargazer::stargazer(d_2021, title = "Figure 1: Summary Statistics for 2021",
+      covariate.labels = c("Rental Prices", "House Values", "Commute Times", "Household Income","Metro Area", "Density", "Rooms"),
+      summary.stat = c("min", "median", "max", "mean", "sd", "p25", "p75", "n"), font.size = "small", out = "stafford_2021.html")
 
