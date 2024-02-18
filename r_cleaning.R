@@ -8,20 +8,23 @@ library(writexl)
 
 
 #creates a vector with the other files that I want to join together
-files <- c("debt_tz.xlsx", "DGS10.xlsx", "DEXUSEU.xlsx",
-           "rates_and_monetary_base.xlsx","DAAA.xlsx","DBAA.xlsx","DFF.xlsx", 
+#----add expected inflation
+files <- c("russell_2000_d.xlsx", "debt_tz.xlsx", "DGS10.xlsx", 
+           "DEXUSEU.xlsx","DAAA.xlsx","DBAA.xlsx","DFF.xlsx", 
            "futures_data.xlsx", "monthly_gdp.xlsx", "M2NS.xlsx", 
-           "budget_surplus_deficit.xlsx","cpi_release_dates.xlsx", 
-           "meeting_dates.xlsx", "debt_ceiling_tz.xlsx")
+           "budget_surplus_deficit.xlsx", "cpi_core.xlsx",
+           "cpi_release_dates.xlsx","auction_dates.xlsx",
+           "job_report.xlsx","expect_1yr.xlsx","expect_10yr.xlsx",
+           "meeting_dates.xlsx","debt_ceiling_tz.xlsx")
 
 #function that attaches and cleans/transforms the data
 join_ <- function(){
   #reads and attaches the first file; change the file to russell 
-  head_ <- inter_att("indices_tsz.xlsx")
+  head_ <- inter_at("sp_500.xlsx")
   
   #attaches each file and joins them together
   for(value in files){
-   tail_ <- inter_att(value)
+   tail_ <- inter_at(value)
    head_ <- merge(head_, tail_, all = TRUE) 
   }  
   
@@ -32,7 +35,8 @@ join_ <- function(){
 }
 
 #function attaches and makes formats date in specific way
-inter_att <- function(a){
+inter_at <- function(a){
+  a <- read_excel(a)
   
   attach(a)
   
@@ -41,10 +45,12 @@ inter_att <- function(a){
   return(a)
 }
 
-
 data_set <- join_()
 
-write_xlsx(data_set, "C:/Users/marvi/OneDrive/Documents/Github/Stock_Markets/full_dataset.xlsx")
+# In excel two columns were made
+# Raised and suspend and these are binary variables
+
+write_xlsx(data_set, "C:/Users/marvi/OneDrive/Documents/GitHub/Stock_Markets/excel_sheets/full_data_set.xlsx")
 
  
   
