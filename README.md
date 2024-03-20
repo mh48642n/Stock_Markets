@@ -5,5 +5,10 @@ its effects on our financial system. This study considers the rationality of the
 price movements. Utilizing the multiple linear regression model, which is estimated with OLS, paired with a time series analysis of monthly stock prices. I will determine how events 
 related to public debt have an effect on equities. Furthermore, based on my analysis it can be determined that changes related to the public debt can leave a small marginal effect on stock prices in the short term.   
 
+## FIles used
+analysis.do invovlves the actual statistical analysis of the final data set
+dataset_final.xlsx is the dataset with the real values 
+r_wrangling and r_cleaning involved the data cleaning process
+
 
 
