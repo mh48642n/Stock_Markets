@@ -1,5 +1,5 @@
 rm(list = ls())
-setwd("C:/Users/marvi/OneDrive/Documents/Github/Stock_Markets/excel_sheets")
+setwd("C:/Users/marvi/OneDrive/Documents/Github/Stock_Markets/")
 getwd()
 
 library(lubridate)
@@ -7,6 +7,7 @@ library(tidyverse)
 library(readxl)
 library(writexl)
 library(xts)
+library(stargazer)
 
 #import dataset and makes it a dataframe
 data_set <- read_excel("full_data_set.xlsx")
@@ -101,6 +102,8 @@ str(data_st)
 
 write_xlsx(data_st, "~/Github/Stock_Markets/real_full_dataset.xlsx")
 
+data_st <- read_excel(file.choose())
+attach(data_st)
 #monthly averages for continuous data
 dummies <- data_st[,c(24, 18:23)]
 data_st <- data_st[,1:17]
@@ -111,6 +114,7 @@ data_st <- data_st %>% group_by(months_time = (ceiling_date(dates, unit = "month
     russell_2000 = mean(russell_2000, na.rm = TRUE),
     eff_fund_rates = mean(eff_fund_rates, na.rm = TRUE),
     futures_10year = mean(futures_10year, na.rm = TRUE),
+    t_note_10yr = mean(t_note_10yr, na.rm = TRUE),
     Aaa = mean(Aaa, na.rm = TRUE),
     Baa = mean(Baa, na.rm = TRUE),
     euro_us_ex = mean(euro_us_ex, na.rm = TRUE),
@@ -151,5 +155,21 @@ data_st$raised <- ifelse(is.na(data_st$raised), 0, 1)
 data_st$auction_day <- ifelse(is.na(data_st$auction_day), 0, 1)
 data_st$suspend <- ifelse(is.na(data_st$suspend), 0, 1)
 data_st$meeting <-  ifelse(is.na(data_st$meeting), 0, 1)
+
+write_xlsx(data_st, "C:/Users/marvi/OneDrive/Documents/GitHub/Stock_Markets/dataset_final.xlsx")
+
+
+data <- read_excel("C:/Users/marvi/OneDrive/Documents/GitHub/Stock_Markets/dataset_final.xlsx")
+attach(data)
+data <- as.data.frame(data)
+
+stargazer(data[c(2:10, 14:16)], type = "html", digits = 2, column.sep.width = "4pt",
+          covariate.labels = c("S&P 500", "Russell 2000", "Federal Funds Rate", "Future Contracts",
+                               "10 Year Note Yields", "Corporate Aaa Bond Yields", 
+                               "Corporate Baa Bond Yields", "Euro/US Spot Exchange Rate", 
+                               "Monthly Public Debt Average","Monthly National Surplus/Deficit",
+                               "1-yr Inflation Expectations", "10-yr Inflation Expectations"),
+          title = "Table 1: Summary Statistics",
+          summary.stat = c("mean","sd","median","min", "max"), out = "pb_summary.html")
 
 
